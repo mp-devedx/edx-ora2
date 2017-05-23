@@ -15,6 +15,10 @@ from validation import validate_submission
 
 logger = logging.getLogger(__name__)
 
+# imports for custom log errors
+import os
+import sys
+reload(sys)
 
 class SubmissionMixin(object):
     """Submission Mixin introducing all Submission-related functionality.
@@ -99,6 +103,11 @@ class SubmissionMixin(object):
 
         status_tag = 'ENOMULTI'  # It is an error to submit multiple times for the same item
         status_text = self._(u'Multiple submissions are not allowed.')
+
+        detailed_error = ''
+
+        detailed_error = student_sub_data
+
         if not workflow:
             try:
                 submission = self.create_submission(
@@ -129,14 +138,14 @@ class SubmissionMixin(object):
                     ).format(student_item=student_item_dict)
                     logger.exception(msg)
                     status_tag = 'EBADFORM'
-            except (api.SubmissionError, AssessmentWorkflowError):
+            except (api.SubmissionError, AssessmentWorkflowError) as e:
                 msg = (
                     u"An unknown error occurred while submitting "
                     u"a response for the user: {student_item}"
                 ).format(student_item=student_item_dict)
                 logger.exception(msg)
                 status_tag = 'EUNKNOWN'
-                status_text = self._(u'API returned unclassified exception.')
+                status_text = self._(u'API returned unclassified exception. --- {0} --- {1}'.format(e, detailed_error))
             else:
                 status = True
                 status_tag = submission.get('student_item')
@@ -188,6 +197,10 @@ class SubmissionMixin(object):
 
         # Store the student's response text in a JSON-encodable dict
         # so that later we can add additional response fields.
+        # self.log_error("este es un error")
+        # with open('error.log', 'wb') as logfile:
+        #     logfile.write("este es un error")
+
         student_sub_dict = prepare_submission_for_serialization(student_sub_data)
 
         if self.file_upload_type:
@@ -210,6 +223,10 @@ class SubmissionMixin(object):
         )
 
         return submission
+
+    def log_error(self, _error):
+        with open('error.log', 'wb') as logfile:
+            logfile.write(_error)
 
     @XBlock.json_handler
     def upload_url(self, data, suffix=''):
